@@ -253,7 +253,7 @@ function Dashboard({
           <main className="mx-auto max-w-[1400px] space-y-6 p-6 lg:p-8">
             <div className="flex flex-wrap items-center justify-end gap-2">
               <button
-                onClick={() => downloadStandaloneHtml(DASHBOARD_DATA)}
+                onClick={() => downloadStandaloneHtml(DASHBOARD_DATA, unrecognizedMembers)}
                 className="flex items-center gap-1.5 rounded-lg border border-brand-green-200/30 px-3 py-1.5 text-xs text-brand-green-200 hover:border-brand-green-200/60 hover:text-brand-green-50"
               >
                 <Download className="h-3.5 w-3.5" />
@@ -299,19 +299,12 @@ function App() {
   const [loaded, setLoaded] = useState<{ data: DashboardData; unrecognizedMembers: string[] } | null>(() => {
     const embedded = getEmbeddedDashboardData();
     if (!embedded) return null;
-    setDashboardData(embedded);
-    return { data: embedded, unrecognizedMembers: [] };
+    setDashboardData(embedded.data);
+    return { data: embedded.data, unrecognizedMembers: embedded.unrecognizedMembers };
   });
 
   if (!loaded) {
-    return (
-      <UploadScreen
-        onLoaded={(data, unrecognizedMembers) => {
-          setDashboardData(data);
-          setLoaded({ data, unrecognizedMembers });
-        }}
-      />
-    );
+    return <UploadScreen />;
   }
 
   return <Dashboard unrecognizedMembers={loaded.unrecognizedMembers} onReset={() => setLoaded(null)} />;

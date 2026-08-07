@@ -8,7 +8,7 @@ export type ValidationResult = { ok: true } | { ok: false; message: string };
  * clear, human-readable error instead of a cryptic JS exception mid-parse. */
 export async function validateWorkbook(file: File): Promise<ValidationResult> {
   if (!/\.xlsx$/i.test(file.name)) {
-    return { ok: false, message: `"${file.name}" isn't an .xlsx file. Please upload the Workday CPT export.` };
+    return { ok: false, message: `"${file.name}" isn't an .xlsx file. Please upload the Sagiease CPT export.` };
   }
 
   let workbook: XLSX.WorkBook;
@@ -24,7 +24,7 @@ export async function validateWorkbook(file: File): Promise<ValidationResult> {
   if (!workbook.SheetNames.includes(REQUIRED_SHEET)) {
     return {
       ok: false,
-      message: `This workbook has no "${REQUIRED_SHEET}" sheet (found: ${workbook.SheetNames.join(", ") || "none"}). Please upload the Workday CPT export.`,
+      message: `This workbook has no "${REQUIRED_SHEET}" sheet (found: ${workbook.SheetNames.join(", ") || "none"}). Please upload the Sagiease CPT export.`,
     };
   }
 
@@ -36,7 +36,7 @@ export async function validateWorkbook(file: File): Promise<ValidationResult> {
   if (missing.length > 0) {
     return {
       ok: false,
-      message: `"${REQUIRED_SHEET}" is missing expected column${missing.length > 1 ? "s" : ""}: ${missing.join(", ")}. Please upload the Workday CPT export.`,
+      message: `"${REQUIRED_SHEET}" is missing expected column${missing.length > 1 ? "s" : ""}: ${missing.join(", ")}. Please upload the Sagiease CPT export.`,
     };
   }
 

@@ -1,15 +1,20 @@
-# CPT Performance Dashboard (Public)
+# CPT Excel-to-Dashboard (Public)
 
 ## What this is
 
-A public, fully client-side fork of the CPT Performance Dashboard. The user
-uploads the Workday CPT export (.xlsx) and the entire Excel→dashboard
+A public, fully client-side fork of the CPT Excel-to-Dashboard. The user
+uploads the Sagiease CPT export (.xlsx) and the entire Excel→dashboard
 pipeline runs in their browser -- no backend, no server, the file never
 leaves the machine. Built so leadership can generate and share the
 dashboard without needing the private source data repo or a Python
 environment.
 
-**Live:** https://lucerojerwinglen-byte.github.io/cpt-dashboard-public/
+Sagiease is the CPT system of record -- cases are *received* there, which is
+where this export comes from. Workday is a separate system where those
+cases get *processed* afterward. Don't "fix" the export name back to
+Workday -- it's not a typo, it's the correct source system.
+
+**Live:** https://lucerojerwinglen-byte.github.io/cpt-excel-to-dashboard/
 **Deploy:** push to `main` → `.github/workflows/deploy.yml` builds and
 publishes `dist/` to GitHub Pages automatically (no manual step).
 

@@ -1,7 +1,7 @@
-# CPT Performance Dashboard (Public)
+# CPT Excel-to-Dashboard (Public)
 
-A public, client-side build of the CPT Performance Dashboard. Upload the
-Workday CPT export (.xlsx) and the whole Excel-to-dashboard pipeline runs
+A public, client-side build of the CPT Excel-to-Dashboard. Upload the
+Sagiease CPT export (.xlsx) and the whole Excel-to-dashboard pipeline runs
 entirely in your browser -- the file never leaves your machine, there's no
 backend, and nothing is uploaded anywhere.
 
