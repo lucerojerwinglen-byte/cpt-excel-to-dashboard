@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: "Sagility Sans";
+  src: url("./fonts/SagilitySans-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Sagility Sans";
+  src: url("./fonts/SagilitySans-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Sagility Sans";
+  src: url("./fonts/SagilitySans-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme {
+  --font-sans: "Sagility Sans", ui-sans-serif, system-ui, sans-serif;
+
+  /* Sagility brand -- green family (primary) */
+  --color-brand-green-50: #bbffe3;
+  --color-brand-green-200: #6efacd;
+  --color-brand-green-400: #00cba1;
+  --color-brand-green-700: #00493a;
+  --color-brand-green-900: #00211a;
+
+  /* Sagility brand -- blue family (secondary) */
+  --color-brand-blue-100: #bceaff;
+  --color-brand-blue-300: #55aaff;
+  --color-brand-blue-500: #0050ff;
+  --color-brand-blue-800: #1e2867;
+
+  /* Sagility brand -- pink/purple family (accent) */
+  --color-brand-pink-200: #ffa6d7;
+  --color-brand-pink-400: #e96be2;
+  --color-brand-pink-600: #c82ebf;
+  --color-brand-pink-800: #531367;
+  --color-brand-pink-900: #26093b;
+  --color-brand-navy-900: #091439;
+
+  /* Neutrals from the brand's Custom Colors row */
+  --color-brand-white: #ffffff;
+  --color-brand-gray-100: #e4e4e4;
+  --color-brand-gray-800: #222222;
+  --color-brand-black: #000000;
+
+  /* Semantic (status) colors mapped onto brand hues */
+  --color-status-good: #00cba1;
+  --color-status-warning: #eda100;
+  --color-status-serious: #e96be2;
+  --color-status-critical: #c82ebf;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background-color: var(--color-brand-green-700);
+  color: var(--color-brand-green-50);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
