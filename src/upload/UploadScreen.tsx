@@ -66,7 +66,7 @@ export function UploadScreen() {
 
       <div className="relative w-full max-w-xl space-y-6">
         <div className="flex flex-col items-center text-center">
-          <img src={sagilityLogo} alt="Sagility" className="h-9 w-auto" />
+          <img src={sagilityLogo} alt="Sagility" className="h-24 w-auto" />
           <h1 className="mt-5 text-2xl font-medium text-brand-green-50">CPT Excel-to-Dashboard</h1>
           <p className="mt-2 text-sm text-brand-green-200">
             Upload the Sagiease CPT export (.xlsx) to generate the dashboard. Nothing leaves your browser --
