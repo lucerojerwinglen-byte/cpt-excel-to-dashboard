@@ -59,4 +59,4 @@ export const UNRECOGNIZED_TEAM = "Unrecognized";
  * rankings and intervention call-outs (still gets a full profile card,
  * tagged "Ramping" in the UI) -- keeps a small joiner from being auto-named
  * the worst performer next to a high-volume veteran. */
-export const MIN_COMPLETED_FOR_RANKING = 100;
+export const MIN_COMPLETED_FOR_RANKING = 25;

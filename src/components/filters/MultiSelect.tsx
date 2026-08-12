@@ -49,7 +49,7 @@ export function MultiSelect({ label, options, selected, onToggle, searchable = f
       </button>
 
       {open && (
-        <div className="absolute z-20 mt-1 w-full min-w-[220px] rounded-xl border border-brand-green-700/10 bg-white p-2 shadow-lg">
+        <div className="absolute z-40 mt-1 w-full min-w-[220px] rounded-xl border border-brand-green-700/10 bg-white p-2 shadow-lg">
           {searchable && (
             <input
               autoFocus

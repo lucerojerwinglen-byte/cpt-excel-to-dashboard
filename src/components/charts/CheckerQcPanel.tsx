@@ -1,10 +1,14 @@
+import { useState } from "react";
 import { AlertTriangle, UserCheck } from "lucide-react";
 import { ChartCard } from "../ui/ChartCard";
 import { ProgressBar } from "../ui/ProgressBar";
+import { SegmentedToggle } from "../ui/SegmentedToggle";
 import { useCheckerStats } from "../../data/useDashboardSelectors";
-import { fmtNum, fmtPct } from "../../lib/format";
+import { fmtNum, fmtPct, tenureShort } from "../../lib/format";
 import { seriesColor } from "../../lib/palette";
-import type { CheckerStatsRow } from "../../data/selectors";
+import type { CheckerStatsRow, LocalTeam } from "../../data/selectors";
+
+type TeamToggle = "Both" | LocalTeam;
 
 function buildInsight(rows: CheckerStatsRow[]): string {
   const eligible = rows.filter((r) => r.volumeChecked >= 30);
@@ -14,8 +18,13 @@ function buildInsight(rows: CheckerStatsRow[]): string {
   return `${fmtNum(rows.reduce((s, r) => s + r.volumeChecked, 0))} completed cases have been approved. ${worst.name} has the highest breach rate among cases they approved, at ${fmtPct(worst.breachRatePct)} (team average ${fmtPct(avg)}) — correlational, not a verdict on the approver specifically.`;
 }
 
+/** Both/Philippines/India toggle filters the already-computed approver list
+ * by the approver's own team, same approach as CheckerVolumeChart -- see that
+ * file's comment for why this doesn't re-scope the underlying case rows. */
 export function CheckerQcPanel() {
-  const rows = useCheckerStats();
+  const [team, setTeam] = useState<TeamToggle>("Both");
+  const allRows = useCheckerStats();
+  const rows = team === "Both" ? allRows : allRows.filter((r) => r.team === team);
   const maxRate = Math.max(1, ...rows.map((r) => r.breachRatePct ?? 0));
 
   return (
@@ -24,6 +33,17 @@ export function CheckerQcPanel() {
       title="Initiator–Approver Quality Signal"
       subtitle="SLA breach rate on completed cases, by who approves the case"
       icon={UserCheck}
+      headerExtra={
+        <SegmentedToggle
+          value={team}
+          onChange={setTeam}
+          options={[
+            { value: "Both", label: "Both" },
+            { value: "Philippines", label: "PH" },
+            { value: "India", label: "IND" },
+          ]}
+        />
+      }
       insight={buildInsight(rows)}
       table={{
         headers: ["Approver", "Cases Approved", "Breached", "Breach Rate"],
@@ -48,20 +68,30 @@ export function CheckerQcPanel() {
         <p className="py-6 text-center text-sm text-brand-green-700">No approved completed cases in the current view.</p>
       ) : (
         <div className="space-y-2.5">
-          {rows.map((r, i) => (
-            <div key={r.name} className="flex items-center gap-3">
-              <span className="w-40 shrink-0 truncate text-xs font-medium text-brand-green-900">{r.name}</span>
-              <div className="min-w-0 flex-1">
-                <ProgressBar pct={((r.breachRatePct ?? 0) / maxRate) * 100} color={seriesColor(i)} height={10} />
+          {rows.map((r, i) => {
+            const tenure = tenureShort(r.tenureDays, r.tenureApprox);
+            return (
+              <div key={r.name} className="flex items-center gap-3">
+                <div className="flex w-44 shrink-0 items-center gap-1.5 overflow-hidden">
+                  <span className="truncate text-xs font-medium text-brand-green-900">{r.name}</span>
+                  {tenure && (
+                    <span className="shrink-0 whitespace-nowrap rounded-full bg-brand-green-700/8 px-1.5 py-0.5 text-[9.5px] font-medium text-brand-green-700">
+                      {tenure}
+                    </span>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <ProgressBar pct={((r.breachRatePct ?? 0) / maxRate) * 100} color={seriesColor(i)} height={10} />
+                </div>
+                <span className="w-14 shrink-0 text-right text-xs font-medium tabular-nums text-brand-green-900">
+                  {fmtPct(r.breachRatePct, 1)}
+                </span>
+                <span className="w-20 shrink-0 text-right text-[10.5px] tabular-nums text-brand-green-700">
+                  {fmtNum(r.volumeChecked)} approved
+                </span>
               </div>
-              <span className="w-14 shrink-0 text-right text-xs font-medium tabular-nums text-brand-green-900">
-                {fmtPct(r.breachRatePct, 1)}
-              </span>
-              <span className="w-20 shrink-0 text-right text-[10.5px] tabular-nums text-brand-green-700">
-                {fmtNum(r.volumeChecked)} approved
-              </span>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </ChartCard>

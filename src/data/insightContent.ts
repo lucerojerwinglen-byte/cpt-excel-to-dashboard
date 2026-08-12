@@ -126,9 +126,9 @@ export const INSIGHT_CONTENT: Record<string, InsightContent> = {
   },
   "card-workload": {
     whyItMatters:
-      "Heavy concentration among a few CPT members is a resilience risk, not just an interesting distribution. If any of the top handful is out for an extended period, throughput takes an immediate hit.",
+      "Heavy concentration among a few CPT members is a resilience risk, not just an interesting distribution. If any of the top handful is out for an extended period, throughput takes an immediate hit. The tenure badge next to each name is there so a newer joiner sitting low on this ranking reads as early rather than underperforming.",
     suggestedAction:
-      "Review whether the spread reflects intentional specialization or simply how work has been assigned, and whether redistributing volume adds resilience.",
+      "Review whether the spread reflects intentional specialization or simply how work has been assigned, and whether redistributing volume adds resilience. Use the Both/Philippines/India toggle to compare a member against their own team rather than the combined ranking.",
   },
   "card-cptdow": {
     whyItMatters:

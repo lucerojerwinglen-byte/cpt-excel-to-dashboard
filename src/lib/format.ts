@@ -59,3 +59,22 @@ export function fmtWeekLabel(ms: number): string {
   const d = new Date(ms);
   return `${MONTH_ABBR[d.getUTCMonth()]} ${d.getUTCDate()}`;
 }
+
+/** "~2.3mo tenure · since 01 Jul 2025 (cohort estimate)" -- shared by any
+ * chart/card that needs to show a member's tenure alongside their numbers. */
+export function tenureLabel(startTs: number | null, tenureDays: number | null, tenureApprox: boolean): string {
+  if (startTs === null || tenureDays === null) return "Tenure unknown";
+  const months = tenureDays / 30.4;
+  const label = months < 1 ? `${Math.round(tenureDays)}d tenure` : `${months.toFixed(1)}mo tenure`;
+  return `${tenureApprox ? "~" : ""}${label} · since ${fmtDateShort(startTs)}${tenureApprox ? " (cohort estimate)" : ""}`;
+}
+
+/** Compact tenure for inline badges/pills, e.g. "~3mo" or "13.2mo" -- null
+ * when tenure is unknown, so callers can decide whether to render a pill at
+ * all. See tenureLabel for the fuller "since <date>" version. */
+export function tenureShort(tenureDays: number | null, tenureApprox: boolean): string | null {
+  if (tenureDays === null) return null;
+  const months = tenureDays / 30.4;
+  const label = months < 1 ? `${Math.round(tenureDays)}d` : `${months.toFixed(1)}mo`;
+  return `${tenureApprox ? "~" : ""}${label}`;
+}

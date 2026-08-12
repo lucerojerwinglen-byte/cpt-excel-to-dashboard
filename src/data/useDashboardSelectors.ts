@@ -19,9 +19,9 @@ import {
   cptDayOfWeek,
   cptMemberCategoryBreakdown,
   cptMemberStats,
-  cptWorkload,
   departmentBreakdown,
   getFilteredIndices,
+  getFilteredIndicesAnyTeam,
   getFilteredIndicesForTeam,
   processingDurationStats,
   requestTimeHeatmap,
@@ -88,11 +88,6 @@ export function useSiteBreakdown(topN = 10) {
 export function useCountryBreakdown() {
   const indices = useFilteredIndices();
   return useMemo(() => countryBreakdown(indices), [indices]);
-}
-
-export function useCptWorkload(topN = 17) {
-  const indices = useFilteredIndices();
-  return useMemo(() => cptWorkload(indices, topN), [indices, topN]);
 }
 
 export function useCategoryPerformance() {
@@ -177,4 +172,20 @@ export function useCompletionTimeHeatmap(indices: number[], basis: TimeBasis = "
 export function useFilteredIndicesForTeam(team: LocalTeam): number[] {
   const { filters } = useFilters();
   return useMemo(() => getFilteredIndicesForTeam(filters, team), [filters, team]);
+}
+
+/** Same contract as useFilteredIndicesForTeam, for a local toggle's "Both"
+ * state -- every team, still ignoring the sidebar's global Team filter. */
+export function useFilteredIndicesAnyTeam(): number[] {
+  const { filters } = useFilters();
+  return useMemo(() => getFilteredIndicesAnyTeam(filters), [filters]);
+}
+
+/** Single hook for a chart-local Both/Philippines/India toggle, so the
+ * component doesn't need to conditionally call two different indices hooks
+ * depending on which segment is selected. */
+export function useCptTeamToggleIndices(team: "Both" | LocalTeam): number[] {
+  const anyTeam = useFilteredIndicesAnyTeam();
+  const oneTeam = useFilteredIndicesForTeam(team === "Both" ? "Philippines" : team);
+  return team === "Both" ? anyTeam : oneTeam;
 }

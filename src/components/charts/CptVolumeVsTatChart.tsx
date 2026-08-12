@@ -1,11 +1,17 @@
+import { useMemo, useState } from "react";
 import { Bar, BarChart, Cell, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Activity } from "lucide-react";
 import { ChartCard } from "../ui/ChartCard";
-import { useCptMemberStats } from "../../data/useDashboardSelectors";
-import { fmtNum } from "../../lib/format";
+import { SegmentedToggle } from "../ui/SegmentedToggle";
+import { useCptTeamToggleIndices } from "../../data/useDashboardSelectors";
+import { cptMemberStats } from "../../data/selectors";
+import { fmtNum, tenureShort } from "../../lib/format";
 import { TEAM_COLOR } from "../../lib/palette";
 import { TooltipCard } from "./TooltipCard";
-import type { CptMemberStats } from "../../data/selectors";
+import { MemberNameTenureTick, MEMBER_TICK_WIDTH } from "./MemberNameTenureTick";
+import type { CptMemberStats, LocalTeam } from "../../data/selectors";
+
+type TeamToggle = "Both" | LocalTeam;
 
 function buildInsight(rows: CptMemberStats[]): string {
   const withData = rows.filter((r) => r.totalCompleted > 0);
@@ -47,20 +53,43 @@ function VolumeAndTatLabel(props: {
 }
 
 /** Horizontal, ranked-by-volume layout -- readable regardless of team size,
- * unlike a vertical bar chart with 17 rotated member-name labels. */
+ * unlike a vertical bar chart with 17 rotated member-name labels. Local
+ * Both/Philippines/India toggle: see CONTEXT.md's "Local Team Toggle" entry
+ * for why "Both" still needs its own indices call rather than reusing the
+ * sidebar's global Team filter. */
 export function CptVolumeVsTatChart() {
-  const rows = useCptMemberStats();
+  const [team, setTeam] = useState<TeamToggle>("Both");
+  const indices = useCptTeamToggleIndices(team);
+  const rows = useMemo(() => cptMemberStats(indices), [indices]);
+
   const data: Row[] = rows
     .filter((r) => r.totalCompleted > 0)
     .sort((a, b) => b.totalCompleted - a.totalCompleted)
     .map((r) => ({ label: r.name, volume: r.totalCompleted, avgMinutes: r.avgActualMinutes, team: r.team }));
 
+  const tenureByName = new Map(
+    rows.map((r) => [r.name, tenureShort(r.tenureDays, r.tenureApprox)] as const).filter((pair): pair is [string, string] => pair[1] !== null),
+  );
+
+  const teamLabel = team === "Both" ? "all teams" : team;
+
   return (
     <ChartCard
       id="card-cptvoltat"
       title="Volume vs. Average Processing Time"
-      subtitle="Completed cases only, ranked by volume -- all 17 members"
+      subtitle={`Completed cases only, ranked by volume -- ${teamLabel}`}
       icon={Activity}
+      headerExtra={
+        <SegmentedToggle
+          value={team}
+          onChange={setTeam}
+          options={[
+            { value: "Both", label: "Both" },
+            { value: "Philippines", label: "PH" },
+            { value: "India", label: "IND" },
+          ]}
+        />
+      }
       insight={buildInsight(rows)}
       table={{
         headers: ["Member", "Team", "Completed Cases", "Average Actual Minutes"],
@@ -74,8 +103,8 @@ export function CptVolumeVsTatChart() {
             <YAxis
               type="category"
               dataKey="label"
-              width={170}
-              tick={{ fontSize: 11, fill: "#00493a" }}
+              width={MEMBER_TICK_WIDTH}
+              tick={<MemberNameTenureTick tenureByName={tenureByName} />}
               axisLine={false}
               tickLine={false}
             />

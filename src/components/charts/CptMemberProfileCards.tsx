@@ -8,18 +8,11 @@ import { Pill } from "../ui/Pill";
 import { ProgressBar } from "../ui/ProgressBar";
 import { useCptMemberCategoryBreakdown, useCptMemberStats, useTeamLeaderboards } from "../../data/useDashboardSelectors";
 import { MIN_COMPLETED_FOR_RANKING } from "../../data/loadData";
-import { fmtDateShort, fmtNum, fmtPct } from "../../lib/format";
+import { fmtDateShort, fmtNum, fmtPct, tenureLabel } from "../../lib/format";
 import { accentFor } from "../../lib/palette";
 import type { CptCategoryRow, CptMemberStats, TeamLeaderboard } from "../../data/selectors";
 
 type TeamFilter = "both" | "Philippines" | "India";
-
-function tenureLabel(m: CptMemberStats): string {
-  if (m.startTs === null || m.tenureDays === null) return "Tenure unknown";
-  const months = m.tenureDays / 30.4;
-  const label = months < 1 ? `${Math.round(m.tenureDays)}d tenure` : `${months.toFixed(1)}mo tenure`;
-  return `${m.tenureApprox ? "~" : ""}${label} · since ${fmtDateShort(m.startTs)}${m.tenureApprox ? " (cohort estimate)" : ""}`;
-}
 
 function buildInsight(rows: CptMemberStats[]): string {
   const withTenure = rows.filter((r) => r.casesPerDay !== null && r.totalCompleted >= 10);
@@ -103,7 +96,7 @@ function MemberCard({
           )}
         </div>
       </div>
-      <p className="mt-2 text-[11px] text-brand-green-700/80">{tenureLabel(member)}</p>
+      <p className="mt-2 text-[11px] text-brand-green-700/80">{tenureLabel(member.startTs, member.tenureDays, member.tenureApprox)}</p>
 
       <div className="mt-3 grid grid-cols-3 gap-2 text-center">
         <div className="rounded-xl bg-brand-green-50 px-1.5 py-2">

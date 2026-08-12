@@ -1,10 +1,15 @@
+import { useState } from "react";
 import { Bar, BarChart, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { CheckCheck } from "lucide-react";
 import { ChartCard } from "../ui/ChartCard";
+import { SegmentedToggle } from "../ui/SegmentedToggle";
 import { useCheckerStats } from "../../data/useDashboardSelectors";
-import { fmtNum, fmtPct } from "../../lib/format";
+import { fmtNum, fmtPct, tenureShort } from "../../lib/format";
 import { TooltipCard } from "./TooltipCard";
-import type { CheckerStatsRow } from "../../data/selectors";
+import { MemberNameTenureTick, MEMBER_TICK_WIDTH } from "./MemberNameTenureTick";
+import type { CheckerStatsRow, LocalTeam } from "../../data/selectors";
+
+type TeamToggle = "Both" | LocalTeam;
 
 function buildInsight(rows: CheckerStatsRow[]): string {
   if (!rows.length) return "No approved completed cases in the current view.";
@@ -22,16 +27,43 @@ function buildInsight(rows: CheckerStatsRow[]): string {
  * companion metric was considered and dropped: the checker's own sign-off
  * timestamp lands ~1-2 minutes before case closure in 99.9% of rows, which
  * reads as system/workflow latency rather than real review-time variation --
- * not a fair or meaningful "speed" comparison between people. */
+ * not a fair or meaningful "speed" comparison between people.
+ *
+ * The Both/Philippines/India toggle filters the already-computed approver
+ * list by the approver's own team (CHECKER_TEAM) -- same approach
+ * teamLeaderboards already uses for "Top Approver", rather than re-scoping
+ * the underlying case rows, since which cases an approver signs off on isn't
+ * restricted by that approver's own team. Approvers with no team match (the
+ * "Unknown" placeholder, or someone who approves without being a
+ * case-processing CPT member) only ever show under "Both". */
 export function CheckerVolumeChart() {
-  const rows = useCheckerStats();
+  const [team, setTeam] = useState<TeamToggle>("Both");
+  const allRows = useCheckerStats();
+  const rows = team === "Both" ? allRows : allRows.filter((r) => r.team === team);
+
+  const tenureByName = new Map(
+    rows.map((r) => [r.name, tenureShort(r.tenureDays, r.tenureApprox)] as const).filter((pair): pair is [string, string] => pair[1] !== null),
+  );
+
+  const teamLabel = team === "Both" ? "all teams" : team;
 
   return (
     <ChartCard
       id="card-checkervolume"
       title="Approver Case Volume"
-      subtitle="Completed cases approved, ranked by volume -- who's carrying the most approval workload"
+      subtitle={`Completed cases approved, ranked by volume -- ${teamLabel}`}
       icon={CheckCheck}
+      headerExtra={
+        <SegmentedToggle
+          value={team}
+          onChange={setTeam}
+          options={[
+            { value: "Both", label: "Both" },
+            { value: "Philippines", label: "PH" },
+            { value: "India", label: "IND" },
+          ]}
+        />
+      }
       insight={buildInsight(rows)}
       table={{
         headers: ["Approver", "Cases Approved", "% of Approved Volume"],
@@ -51,8 +83,8 @@ export function CheckerVolumeChart() {
               <YAxis
                 type="category"
                 dataKey="name"
-                width={170}
-                tick={{ fontSize: 11, fill: "#00493a" }}
+                width={MEMBER_TICK_WIDTH}
+                tick={<MemberNameTenureTick tenureByName={tenureByName} />}
                 axisLine={false}
                 tickLine={false}
               />

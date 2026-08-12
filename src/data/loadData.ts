@@ -34,6 +34,13 @@ export let MIN_COMPLETED_FOR_RANKING = 0;
  * there's no shared index space with cptMembers/cptTeam. */
 export let CHECKER_TEAM: (string | null)[] = [];
 
+/** Parallel to `checkers`, same name-lookup as CHECKER_TEAM -- an approver's
+ * tenure is their tenure as a CPT member (roster.ts has no separate approver
+ * roster), so charts that show tenure per approver reuse this rather than
+ * re-deriving it. Null for a checker with no matching cptMembers entry. */
+export let CHECKER_START_TS: (number | null)[] = [];
+export let CHECKER_TENURE_APPROX: boolean[] = [];
+
 /** Populates every export above from a freshly-parsed workbook. Called once,
  * right after the in-browser Excel transform completes and before the
  * dashboard UI is allowed to mount (see App.tsx's upload gate). */
@@ -63,6 +70,14 @@ export function setDashboardData(data: DashboardData): void {
   CHECKER_TEAM = data.checkers.map((name) => {
     const m = data.cptMembers.indexOf(name);
     return m === -1 ? null : data.cptTeam[m];
+  });
+  CHECKER_START_TS = data.checkers.map((name) => {
+    const m = data.cptMembers.indexOf(name);
+    return m === -1 ? null : data.cptStartTs[m];
+  });
+  CHECKER_TENURE_APPROX = data.checkers.map((name) => {
+    const m = data.cptMembers.indexOf(name);
+    return m === -1 ? false : data.cptTenureApprox[m];
   });
 
   setProvenanceData(data);

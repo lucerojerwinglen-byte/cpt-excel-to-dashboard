@@ -1,4 +1,4 @@
-import { CHECKER_TEAM, DASHBOARD_DATA, MIN_COMPLETED_FOR_RANKING, PARTIAL_MONTHS, REPORT_NOW_MS, ROW_COUNT, STATUS, onlyCompleted } from "./loadData";
+import { CHECKER_START_TS, CHECKER_TEAM, CHECKER_TENURE_APPROX, DASHBOARD_DATA, MIN_COMPLETED_FOR_RANKING, PARTIAL_MONTHS, REPORT_NOW_MS, ROW_COUNT, STATUS, onlyCompleted } from "./loadData";
 import type { FilterState } from "../state/FilterContext";
 import { bucketKey, type Granularity } from "../lib/bucket";
 import { statsOf, type RangeStats } from "../lib/stats";
@@ -50,6 +50,19 @@ export function getFilteredIndicesForTeam(filters: FilterState, team: LocalTeam)
   const out: number[] = [];
   for (let i = 0; i < ROW_COUNT; i++) {
     if (cptTeam[cols.cpt[i]] !== team) continue;
+    if (matchesFiltersExceptTeam(i, filters)) out.push(i);
+  }
+  return out;
+}
+
+/** Same "local toggle owns team scope" contract as getFilteredIndicesForTeam,
+ * for a chart's own toggle's "Both" state -- every row regardless of team
+ * (including Unrecognized-team members), still ignoring the sidebar's global
+ * Team filter so switching the chart's toggle to "Both" reliably shows
+ * everyone rather than whatever the sidebar happened to be left on. */
+export function getFilteredIndicesAnyTeam(filters: FilterState): number[] {
+  const out: number[] = [];
+  for (let i = 0; i < ROW_COUNT; i++) {
     if (matchesFiltersExceptTeam(i, filters)) out.push(i);
   }
   return out;
@@ -661,6 +674,14 @@ export function cptMemberCategoryBreakdown(indices: number[]): Map<string, CptCa
 
 export interface CheckerStatsRow {
   name: string;
+  /** The approver's own team, via CHECKER_TEAM (same roster as cptMembers,
+   * looked up by name). Null when the name has no roster match -- the
+   * "Unknown" blank-approval placeholder, or someone (e.g. a Team Lead) who
+   * approves cases without being a case-processing CPT member. */
+  team: string | null;
+  startTs: number | null;
+  tenureDays: number | null;
+  tenureApprox: boolean;
   volumeChecked: number;
   breachedUnderChecker: number;
   breachRatePct: number | null;
@@ -685,12 +706,19 @@ export function checkerStats(indices: number[]): CheckerStatsRow[] {
   }
 
   return checkers
-    .map((name, i) => ({
-      name,
-      volumeChecked: n[i],
-      breachedUnderChecker: breached[i],
-      breachRatePct: n[i] > 0 ? (breached[i] / n[i]) * 100 : null,
-    }))
+    .map((name, i) => {
+      const startTs = CHECKER_START_TS[i] ?? null;
+      return {
+        name,
+        team: CHECKER_TEAM[i] ?? null,
+        startTs,
+        tenureDays: startTs !== null ? Math.max(1, (REPORT_NOW_MS - startTs) / MS_PER_DAY) : null,
+        tenureApprox: CHECKER_TENURE_APPROX[i] ?? false,
+        volumeChecked: n[i],
+        breachedUnderChecker: breached[i],
+        breachRatePct: n[i] > 0 ? (breached[i] / n[i]) * 100 : null,
+      };
+    })
     .filter((r) => r.volumeChecked > 0)
     .sort((a, b) => b.volumeChecked - a.volumeChecked);
 }
