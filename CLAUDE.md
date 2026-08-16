@@ -14,9 +14,14 @@ where this export comes from. Workday is a separate system where those
 cases get *processed* afterward. Don't "fix" the export name back to
 Workday -- it's not a typo, it's the correct source system.
 
-**Live:** https://lucerojerwinglen-byte.github.io/cpt-excel-to-dashboard/
-**Deploy:** push to `main` → `.github/workflows/deploy.yml` builds and
-publishes `dist/` to GitHub Pages automatically (no manual step).
+**Live:** https://cpt-excel-to-dashboard.jerwinlucero.workers.dev/
+**Deploy:** Cloudflare Workers Builds via its own GitHub Git integration
+(configured in the Cloudflare dashboard, not a GitHub Actions workflow) --
+push to `main` and Cloudflare runs `npm run build` then `npx wrangler
+deploy`, publishing the static assets described by `wrangler.jsonc`
+(`assets.directory: ./dist`). Non-`main` branches get their own preview
+deploy via `npx wrangler versions upload`. Moved off GitHub Pages because
+`*.github.io` is blocked on the target company network.
 
 This repo is a sibling of a private project ("CPT Data Analysis Project" /
 `cpt-performance-dashboard`) that builds the same dashboard at build-time
