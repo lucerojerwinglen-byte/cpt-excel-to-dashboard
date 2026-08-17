@@ -14,7 +14,7 @@ where this export comes from. Workday is a separate system where those
 cases get *processed* afterward. Don't "fix" the export name back to
 Workday -- it's not a typo, it's the correct source system.
 
-**Live:** https://cpt-excel-to-dashboard.jerwinlucero.workers.dev/
+**Live:** https://cptexcelto-dashboard.jerwinlucero.workers.dev/
 **Deploy:** Cloudflare Workers Builds via its own GitHub Git integration
 (configured in the Cloudflare dashboard, not a GitHub Actions workflow) --
 push to `main` and Cloudflare runs `npm run build` then `npx wrangler
