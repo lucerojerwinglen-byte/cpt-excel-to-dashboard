@@ -6,9 +6,10 @@ import { SECTIONS_META, useSectionNav } from "../../state/SectionNavContext";
  * scroll-spy -- there's no shared scroll position driving that anymore. The
  * bar does still watch scroll position for one unrelated reason: it's sticky,
  * and goes translucent once stuck so it doesn't fully block the chart content
- * scrolling underneath it. Horizontally scrollable (not equal-width / not
- * wrapping) so 5 tabs at their natural width never crush or wrap on narrower
- * screens. */
+ * scrolling underneath it. Tabs wrap onto as many rows as needed at their
+ * natural width, rather than scrolling horizontally -- with 10 sections, a
+ * single scrollable row hid most tabs behind a scrollbar; every tab is now
+ * visible at once. */
 export function SectionNav() {
   const { activeSection, setActiveSection } = useSectionNav();
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -41,7 +42,7 @@ export function SectionNav() {
           stuck ? "bg-white/75 backdrop-blur-md" : "bg-white"
         }`}
       >
-        <div className="flex gap-1 overflow-x-auto">
+        <div className="flex flex-wrap gap-1">
           {SECTIONS_META.map((s) => {
             const Icon = s.icon;
             const active = activeSection === s.id;

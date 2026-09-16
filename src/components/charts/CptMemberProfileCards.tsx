@@ -22,20 +22,22 @@ function buildInsight(rows: CptMemberStats[]): string {
 }
 
 interface RoleBadges {
-  topSla: string | null;
-  fastest: string | null;
-  highestVolume: string | null;
+  topSla: string[];
+  fastest: string[];
+  highestVolume: string[];
 }
 
 /** Badges are ranked within the member's own team (via teamLeaderboards),
  * not across both teams -- otherwise a hidden team's outlier could hold a
- * title no visible card ever shows, and this would disagree with the Top
- * Performers by Team panel above, which uses the same per-team ranking. */
+ * title no visible card ever shows, and this would disagree with the CPT
+ * Performer Dashboard panel above, which uses the same per-team ranking.
+ * Each list may hold more than one name -- ties (e.g. several members at
+ * 100% SLA) all get the badge, rather than an arbitrary single winner. */
 function roleBadgesFromLeaderboard(lb: TeamLeaderboard): RoleBadges {
   return {
-    topSla: lb.topSla?.name ?? null,
-    fastest: lb.fastestTat?.name ?? null,
-    highestVolume: lb.highestVolume?.name ?? null,
+    topSla: lb.topSla?.names ?? [],
+    fastest: lb.fastestTat?.names ?? [],
+    highestVolume: lb.highestVolume?.names ?? [],
   };
 }
 
@@ -50,9 +52,9 @@ const BADGE_RAMPING = "bg-brand-green-200/40 text-brand-green-700 border border-
 
 function roleBadgeFor(member: CptMemberStats, badges: RoleBadges): RoleBadgeInfo {
   if (member.lowSample) return { label: `Ramping · under ${MIN_COMPLETED_FOR_RANKING} cases`, icon: Sprout, classes: BADGE_RAMPING };
-  if (member.name === badges.topSla) return { label: "Top SLA Achiever", icon: Trophy, classes: BADGE_ACHIEVEMENT };
-  if (member.name === badges.fastest) return { label: "Fastest Processing", icon: Zap, classes: BADGE_ACHIEVEMENT };
-  if (member.name === badges.highestVolume) return { label: "Highest Volume", icon: TrendingUp, classes: BADGE_ACHIEVEMENT };
+  if (badges.topSla.includes(member.name)) return { label: "Top SLA Achiever", icon: Trophy, classes: BADGE_ACHIEVEMENT };
+  if (badges.fastest.includes(member.name)) return { label: "Fastest Processing", icon: Zap, classes: BADGE_ACHIEVEMENT };
+  if (badges.highestVolume.includes(member.name)) return { label: "Highest Volume", icon: TrendingUp, classes: BADGE_ACHIEVEMENT };
   return { label: "CPT Member", icon: null, classes: "" };
 }
 
@@ -98,7 +100,11 @@ function MemberCard({
       </div>
       <p className="mt-2 text-[11px] text-brand-green-700/80">{tenureLabel(member.startTs, member.tenureDays, member.tenureApprox)}</p>
 
-      <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+      <div className="mt-3 grid grid-cols-4 gap-2 text-center">
+        <div className="rounded-xl bg-brand-green-50 px-1.5 py-2">
+          <p className="text-base font-medium tabular-nums text-brand-green-900">{fmtNum(member.totalAssigned)}</p>
+          <p className="text-[10px] uppercase tracking-wide text-brand-green-700">Total Cases</p>
+        </div>
         <div className="rounded-xl bg-brand-green-50 px-1.5 py-2">
           <p className="text-base font-medium tabular-nums text-brand-green-900">{fmtNum(member.totalCompleted)}</p>
           <p className="text-[10px] uppercase tracking-wide text-brand-green-700">Completed</p>
@@ -195,7 +201,7 @@ export function CptMemberProfileCards() {
       }
       insight={buildInsight(stats)}
       table={{
-        headers: ["Member", "Team", "Since", "Completed", "SLA %", "Avg Actual (min)", "Cases/day"],
+        headers: ["Member", "Team", "Since", "Total Cases", "Completed", "SLA %", "Avg Actual (min)", "Cases/day"],
         rows: stats
           .slice()
           .sort((a, b) => (a.startTs ?? 0) - (b.startTs ?? 0))
@@ -203,6 +209,7 @@ export function CptMemberProfileCards() {
             m.name,
             m.team,
             m.startTs !== null ? fmtDateShort(m.startTs) : "—",
+            fmtNum(m.totalAssigned),
             fmtNum(m.totalCompleted),
             fmtPct(m.slaPct),
             m.avgActualMinutes !== null ? fmtNum(m.avgActualMinutes) : "—",

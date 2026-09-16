@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { FileText, Grid2x2, ListChecks, Sparkles, Users2, AlertTriangle, Download, RotateCcw } from "lucide-react";
 import { FilterProvider } from "./state/FilterContext";
+import { TopPerformerStoreProvider } from "./state/TopPerformerStore";
 import { SectionNavProvider, useSectionNav, SECTIONS_META } from "./state/SectionNavContext";
 import { InsightDrawerProvider } from "./state/InsightDrawerContext";
+import { BroadpathScopeProvider } from "./state/BroadpathScopeContext";
 import { TopBar } from "./components/layout/TopBar";
 import { FilterBar } from "./components/layout/FilterBar";
 import { ActiveFilterChips } from "./components/layout/ActiveFilterChips";
@@ -28,7 +30,6 @@ import { CompletionHeatmapChart } from "./components/charts/CompletionHeatmapCha
 import { CompletionRateTrendChart } from "./components/charts/CompletionRateTrendChart";
 import { CancellationByDepartmentChart } from "./components/charts/CancellationByDepartmentChart";
 import { SlaTrendChart } from "./components/charts/SlaTrendChart";
-import { BreachDriversChart } from "./components/charts/BreachDriversChart";
 import { BreachOutliersTable } from "./components/charts/BreachOutliersTable";
 import { CategoryPerformanceMatrix } from "./components/charts/CategoryPerformanceMatrix";
 import { CategoryVolumeDonut } from "./components/charts/CategoryVolumeDonut";
@@ -36,11 +37,17 @@ import { CategorySlaBarChart } from "./components/charts/CategorySlaBarChart";
 import { TeamTopPerformers } from "./components/charts/TeamTopPerformers";
 import { CptSlaBarChart } from "./components/charts/CptSlaBarChart";
 import { CptVolumeVsTatChart } from "./components/charts/CptVolumeVsTatChart";
-import { CheckerQcPanel } from "./components/charts/CheckerQcPanel";
 import { CheckerVolumeChart } from "./components/charts/CheckerVolumeChart";
 import { CptMemberProfileCards } from "./components/charts/CptMemberProfileCards";
 import { CptWorkloadChart } from "./components/charts/CptWorkloadChart";
 import { CptDayOfWeekChart } from "./components/charts/CptDayOfWeekChart";
+import { BroadpathOverview } from "./components/charts/BroadpathOverview";
+import { ProductionByMemberTable } from "./components/charts/ProductionByMemberTable";
+import { TotalTimeProductionChart } from "./components/charts/TotalTimeProductionChart";
+import { AvgTicketsPerActivePeriodChart } from "./components/charts/AvgTicketsPerActivePeriodChart";
+import { ProductionDetailGrid } from "./components/charts/ProductionDetailGrid";
+import { TatSummaryPanel } from "./components/charts/TatSummaryPanel";
+import { TopPerformerPanel } from "./components/charts/TopPerformerPanel";
 import { useFilteredIndices } from "./data/useDashboardSelectors";
 import {
   categoryObservations,
@@ -62,12 +69,15 @@ function sectionById(id: string) {
 }
 
 const executiveOverview = sectionById("section-executive-overview");
+const broadpath = sectionById("section-broadpath");
 const volumeDemand = sectionById("section-volume-demand");
 const timingPatterns = sectionById("section-timing-patterns");
 const slaPerformance = sectionById("section-sla-performance");
 const categoryPerformance = sectionById("section-category-performance");
 const cptMemberInsights = sectionById("section-cpt-member-insights");
 const workforceCapacity = sectionById("section-workforce-capacity");
+const productionUtilization = sectionById("section-production-utilization");
+const topPerformer = sectionById("section-top-performer");
 
 function DashboardPages() {
   const { activeSection } = useSectionNav();
@@ -98,6 +108,79 @@ function DashboardPages() {
             icon={Sparkles}
             observations={executiveObservations(indices)}
           />
+        </section>
+      )}
+
+      {activeSection === broadpath.id && (
+        <section id={broadpath.id} className="space-y-6">
+          <h2 className="text-lg font-medium text-brand-green-50">{broadpath.label}</h2>
+          {/* Every chart below is the exact same component used elsewhere in
+              this dashboard, unmodified -- BroadpathScopeProvider is what
+              narrows their data to Broadpath's rows only (see
+              BroadpathScopeContext.tsx). Reusing the real components instead
+              of building Broadpath-specific copies is what keeps this in
+              sync with the rest of the app automatically. */}
+          <BroadpathScopeProvider>
+            <BroadpathOverview />
+
+            <SectionLabel>Executive Overview</SectionLabel>
+            <KpiRow />
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <div className="lg:col-span-2">
+                <MonthlyVolumeSlaChart />
+              </div>
+              <SlaComplianceChart />
+              <StatusMixChart />
+              <div className="lg:col-span-2">
+                <SiteBreakdownChart />
+              </div>
+            </div>
+            <ExecutiveScorecard />
+
+            <SectionLabel>Volume & Demand</SectionLabel>
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <div className="lg:col-span-2">
+                <VolumeTrendChart />
+              </div>
+              <CategoryBreakdownChart />
+              <DepartmentBreakdownChart />
+              <div className="lg:col-span-2">
+                <CountryBreakdownChart />
+              </div>
+              <div className="lg:col-span-2">
+                <CompletionRateTrendChart />
+              </div>
+              <div className="lg:col-span-2">
+                <CancellationByDepartmentChart />
+              </div>
+            </div>
+
+            <SectionLabel>SLA Performance</SectionLabel>
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <div className="lg:col-span-2">
+                <SlaTrendChart />
+              </div>
+              <div className="lg:col-span-2">
+                <BreachOutliersTable />
+              </div>
+            </div>
+
+            <SectionLabel>Category Performance</SectionLabel>
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <div className="lg:col-span-2">
+                <CategoryPerformanceMatrix />
+              </div>
+              <CategoryVolumeDonut />
+              <CategorySlaBarChart />
+            </div>
+
+            <SectionLabel>Workforce & Capacity</SectionLabel>
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <div className="lg:col-span-2">
+                <CptWorkloadChart />
+              </div>
+            </div>
+          </BroadpathScopeProvider>
         </section>
       )}
 
@@ -154,7 +237,6 @@ function DashboardPages() {
             <div className="lg:col-span-2">
               <SlaTrendChart />
             </div>
-            <BreachDriversChart />
             <div className="lg:col-span-2">
               <BreachOutliersTable />
             </div>
@@ -203,9 +285,6 @@ function DashboardPages() {
               <CptVolumeVsTatChart />
             </div>
             <div className="lg:col-span-2">
-              <CheckerQcPanel />
-            </div>
-            <div className="lg:col-span-2">
               <CheckerVolumeChart />
             </div>
             <div className="lg:col-span-2">
@@ -235,6 +314,36 @@ function DashboardPages() {
           </div>
         </section>
       )}
+
+      {activeSection === productionUtilization.id && (
+        <section id={productionUtilization.id} className="space-y-6">
+          <h2 className="text-lg font-medium text-brand-green-50">{productionUtilization.label}</h2>
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <div className="lg:col-span-2">
+              <ProductionByMemberTable />
+            </div>
+            <div className="lg:col-span-2">
+              <TotalTimeProductionChart />
+            </div>
+            <div className="lg:col-span-2">
+              <AvgTicketsPerActivePeriodChart />
+            </div>
+            <div className="lg:col-span-2">
+              <ProductionDetailGrid />
+            </div>
+            <div className="lg:col-span-2">
+              <TatSummaryPanel />
+            </div>
+          </div>
+        </section>
+      )}
+
+      {activeSection === topPerformer.id && (
+        <section id={topPerformer.id} className="space-y-6">
+          <h2 className="text-lg font-medium text-brand-green-50">{topPerformer.label}</h2>
+          <TopPerformerPanel />
+        </section>
+      )}
     </div>
   );
 }
@@ -247,6 +356,7 @@ function Dashboard({
   onReset: () => void;
 }) {
   return (
+    <TopPerformerStoreProvider>
     <FilterProvider>
       <SectionNavProvider>
         <InsightDrawerProvider>
@@ -292,6 +402,7 @@ function Dashboard({
         </InsightDrawerProvider>
       </SectionNavProvider>
     </FilterProvider>
+    </TopPerformerStoreProvider>
   );
 }
 

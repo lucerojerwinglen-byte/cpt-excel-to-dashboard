@@ -1,6 +1,6 @@
 import { CHECKER_START_TS, CHECKER_TEAM, CHECKER_TENURE_APPROX, DASHBOARD_DATA, MIN_COMPLETED_FOR_RANKING, PARTIAL_MONTHS, REPORT_NOW_MS, ROW_COUNT, STATUS, onlyCompleted } from "./loadData";
 import type { FilterState } from "../state/FilterContext";
-import { bucketKey, type Granularity } from "../lib/bucket";
+import { bucketKey, bucketRange, type Granularity } from "../lib/bucket";
 import { statsOf, type RangeStats } from "../lib/stats";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -15,7 +15,7 @@ function matchesFiltersExceptTeam(i: number, filters: FilterState): boolean {
   if (filters.site.size > 0 && !filters.site.has(sites[cols.site[i]])) return false;
   if (filters.country.size > 0 && !filters.country.has(countries[cols.country[i]])) return false;
 
-  const ts = cols.reqTs[i];
+  const ts = cols.startTs[i];
   const { start, end } = filters.dateRange;
   if (start !== null && ts < start) return false;
   if (end !== null && ts > end) return false;
@@ -66,6 +66,19 @@ export function getFilteredIndicesAnyTeam(filters: FilterState): number[] {
     if (matchesFiltersExceptTeam(i, filters)) out.push(i);
   }
   return out;
+}
+
+/* ---------- Broadpath ---------- */
+
+export const BROADPATH_COMPANY_NAME = "BROADPATH GLOBAL SERVICES INC.";
+
+/** Restricts to cases raised under the Broadpath subcontractor entity,
+ * identified by exact COMPANY_NAME match -- Broadpath is a vendor, not a
+ * team/site/department, so it gets its own dimension rather than piggy-
+ * backing on an existing filter. */
+export function broadpathIndices(indices: number[]): number[] {
+  const { companies, cols } = DASHBOARD_DATA;
+  return indices.filter((i) => companies[cols.company[i]] === BROADPATH_COMPANY_NAME);
 }
 
 /* ---------- KPIs ---------- */
@@ -137,12 +150,12 @@ export interface MonthlyKpiPoint {
   kpis: KpiSummary;
 }
 
-/** One KpiSummary per calendar month of Request Raised date, in view. */
+/** One KpiSummary per calendar month of TaskStartDate, in view. */
 export function monthlyKpiSeries(indices: number[]): MonthlyKpiPoint[] {
   const { cols } = DASHBOARD_DATA;
   const byMonth = new Map<string, number[]>();
   for (const i of indices) {
-    const key = bucketKey(cols.reqTs[i], "monthly");
+    const key = bucketKey(cols.startTs[i], "monthly");
     let arr = byMonth.get(key);
     if (!arr) {
       arr = [];
@@ -302,16 +315,16 @@ export interface VolumeSlaPoint {
   isPartial: boolean;
 }
 
-/** Bucketed by Request Raised Date -- the field with full coverage and no
- * blanks, representing when the workload actually appeared. Volume counts
- * every case (Completed + Cancelled); SLA% is computed from the Completed
- * subset of each bucket only, per the dictionary's guidance. */
+/** Bucketed by TaskStartDate -- the field with full coverage and no blanks,
+ * representing when a case was actually worked. Volume counts every case
+ * (Completed + Cancelled); SLA% is computed from the Completed subset of
+ * each bucket only, per the dictionary's guidance. */
 export function volumeAndSlaTrend(indices: number[], granularity: Granularity): VolumeSlaPoint[] {
   const { cols } = DASHBOARD_DATA;
   const buckets = new Map<string, { completed: number; cancelled: number; slaMet: number }>();
 
   for (const i of indices) {
-    const key = bucketKey(cols.reqTs[i], granularity);
+    const key = bucketKey(cols.startTs[i], granularity);
     let b = buckets.get(key);
     if (!b) {
       b = { completed: 0, cancelled: 0, slaMet: 0 };
@@ -401,7 +414,7 @@ export function categorySlaTrend(indices: number[], granularity: Granularity): C
   const byCat = categories.map(() => new Map<string, { n: number; met: number }>());
 
   for (const i of completed) {
-    const key = bucketKey(cols.reqTs[i], granularity);
+    const key = bucketKey(cols.startTs[i], granularity);
     keys.add(key);
     const c = cols.cat[i];
     let b = byCat[c].get(key);
@@ -439,7 +452,7 @@ export function slaTrend(indices: number[], granularity: Granularity): SlaTrendP
   const buckets = new Map<string, { n: number; met: number }>();
 
   for (const i of completed) {
-    const key = bucketKey(cols.reqTs[i], granularity);
+    const key = bucketKey(cols.startTs[i], granularity);
     let b = buckets.get(key);
     if (!b) {
       b = { n: 0, met: 0 };
@@ -458,73 +471,6 @@ export function slaTrend(indices: number[], granularity: Granularity): SlaTrendP
       slaPct: b.n > 0 ? (b.met / b.n) * 100 : null,
       isPartial: granularity === "monthly" && PARTIAL_MONTHS.has(key),
     }));
-}
-
-export interface BreachDriverStats {
-  withHold: { n: number; breached: number; breachRate: number | null };
-  withoutHold: { n: number; breached: number; breachRate: number | null };
-}
-
-/** Compares SLA breach rate for Completed cases that had a hold applied vs.
- * those that didn't -- a hold's whole purpose is stopping the SLA clock, so
- * this tests whether holds are actually protecting the cases that use them. */
-export function breachDrivers(indices: number[]): BreachDriverStats {
-  const completed = onlyCompleted(indices);
-  const { cols } = DASHBOARD_DATA;
-  let withHoldN = 0;
-  let withHoldBreached = 0;
-  let withoutHoldN = 0;
-  let withoutHoldBreached = 0;
-
-  for (const i of completed) {
-    const hadHold = cols.holdOverlapSeconds[i] > 0;
-    if (hadHold) {
-      withHoldN++;
-      if (!cols.slaMet[i]) withHoldBreached++;
-    } else {
-      withoutHoldN++;
-      if (!cols.slaMet[i]) withoutHoldBreached++;
-    }
-  }
-
-  return {
-    withHold: { n: withHoldN, breached: withHoldBreached, breachRate: withHoldN > 0 ? (withHoldBreached / withHoldN) * 100 : null },
-    withoutHold: {
-      n: withoutHoldN,
-      breached: withoutHoldBreached,
-      breachRate: withoutHoldN > 0 ? (withoutHoldBreached / withoutHoldN) * 100 : null,
-    },
-  };
-}
-
-export interface HoldImpactStats {
-  casesWithHold: number;
-  avgHoldMinutes: number | null;
-  /** Completed cases where raw TaskSeconds would have breached SLA, but
-   * subtracting hold time (ActualSeconds) brought them back under the
-   * benchmark -- i.e. the hold literally saved the case from an SLA breach. */
-  casesSavedByHold: number;
-}
-
-export function holdImpact(indices: number[]): HoldImpactStats {
-  const completed = onlyCompleted(indices);
-  const { cols } = DASHBOARD_DATA;
-  let casesWithHold = 0;
-  let savedByHold = 0;
-  const holdMinutes: number[] = [];
-
-  for (const i of completed) {
-    if (cols.holdOverlapSeconds[i] <= 0) continue;
-    casesWithHold++;
-    holdMinutes.push(cols.holdOverlapSeconds[i] / 60);
-    const tatSeconds = cols.tatMinutes[i] * 60;
-    const wouldHaveBreached = cols.taskSeconds[i] > tatSeconds;
-    const actuallyMet = cols.actualSeconds[i] <= tatSeconds;
-    if (wouldHaveBreached && actuallyMet) savedByHold++;
-  }
-
-  const stats = statsOf(holdMinutes);
-  return { casesWithHold, avgHoldMinutes: stats?.mean ?? null, casesSavedByHold: savedByHold };
 }
 
 export interface BreachOutlier {
@@ -573,6 +519,8 @@ export interface CptMemberStats {
   tenureApprox: boolean;
   tenureDays: number | null;
   totalCompleted: number;
+  /** Every case assigned to this member regardless of status -- Completed +
+   * Cancelled, i.e. this member's Total Cases. */
   totalAssigned: number;
   slaMetCount: number;
   slaPct: number | null;
@@ -670,6 +618,133 @@ export function cptMemberCategoryBreakdown(indices: number[]): Map<string, CptCa
   return out;
 }
 
+/* ---------- Production & Utilization ---------- */
+
+export interface ProductionTotalRow {
+  name: string;
+  team: string;
+  totalProduction: number;
+  pctOfTeam: number | null;
+  /** Sum of ActualSeconds/60 across every case (Completed + Cancelled) this
+   * member handled -- "Total Time Production": total minutes of actual
+   * working time behind their Total Production Count. Cancelled cases carry
+   * real, non-zero ActualSeconds too (work happened before cancellation),
+   * so this is scoped like totalProduction (both statuses), not like the
+   * rest of the app's Completed-only TAT figures -- this is a workload/
+   * effort measure, not an SLA-performance one. */
+  totalTimeMinutes: number;
+}
+
+/** Aggregate Total Production Count (Completed + Cancelled) per CPT member
+ * over the whole current filtered view, with no period breakdown -- powers
+ * the Production & Utilization tab's ranked chart. Narrow the sidebar's own
+ * date-range filter for a single day/month view. */
+export function productionTotalsByMember(indices: number[]): ProductionTotalRow[] {
+  const { cptMembers, cptTeam, cols } = DASHBOARD_DATA;
+  const count = new Array(cptMembers.length).fill(0);
+  const timeSeconds = new Array(cptMembers.length).fill(0);
+  const teamCount = new Map<string, number>();
+
+  for (const i of indices) {
+    const m = cols.cpt[i];
+    count[m]++;
+    timeSeconds[m] += cols.actualSeconds[i];
+    const team = cptTeam[m];
+    teamCount.set(team, (teamCount.get(team) ?? 0) + 1);
+  }
+
+  return cptMembers
+    .map((name, m) => {
+      const team = cptTeam[m];
+      const teamTotal = teamCount.get(team) ?? 0;
+      return {
+        name,
+        team,
+        totalProduction: count[m],
+        pctOfTeam: teamTotal > 0 ? (count[m] / teamTotal) * 100 : null,
+        totalTimeMinutes: timeSeconds[m] / 60,
+      };
+    })
+    .filter((r) => r.totalProduction > 0)
+    .sort((a, b) => b.totalProduction - a.totalProduction);
+}
+
+export interface MemberPeriodProduction {
+  name: string;
+  team: string;
+  /** Aligned with the `periods` array returned alongside. */
+  perPeriod: number[];
+  total: number;
+  /** Periods (out of `periods`) in which this member had at least one
+   * ticket -- the denominator for avgPerActivePeriod, so a member who
+   * joined partway through the window isn't diluted by periods before they
+   * existed. */
+  activePeriods: number;
+  avgPerActivePeriod: number | null;
+  /** Total / every period in the view (not just this member's active ones)
+   * -- the "diluted across the whole reporting period" figure, for contrast
+   * against avgPerActivePeriod. */
+  avgPerCalendarPeriod: number | null;
+}
+
+export interface MemberPeriodProductionResult {
+  /** Dense range spanning the earliest to latest TaskStartDate in view, at
+   * whatever granularity was requested -- includes periods with zero
+   * company-wide activity, so avgPerCalendarPeriod reflects the true
+   * reporting window, not just periods where someone happened to have a
+   * ticket. */
+  periods: string[];
+  rows: MemberPeriodProduction[];
+}
+
+/** Total Production Count (Completed + Cancelled) per CPT member, broken
+ * out by day/week/month of TaskStartDate -- powers the Production &
+ * Utilization tab's "per active period" ranking and full employee x period
+ * detail grid. */
+export function memberPeriodProduction(indices: number[], granularity: Granularity): MemberPeriodProductionResult {
+  const { cptMembers, cptTeam, cols } = DASHBOARD_DATA;
+  if (!indices.length) return { periods: [], rows: [] };
+
+  let minTs = Infinity;
+  let maxTs = -Infinity;
+  const perMemberPeriod = new Map<number, Map<string, number>>();
+
+  for (const i of indices) {
+    const ts = cols.startTs[i];
+    if (ts < minTs) minTs = ts;
+    if (ts > maxTs) maxTs = ts;
+    const period = bucketKey(ts, granularity);
+    const m = cols.cpt[i];
+    let byPeriod = perMemberPeriod.get(m);
+    if (!byPeriod) {
+      byPeriod = new Map();
+      perMemberPeriod.set(m, byPeriod);
+    }
+    byPeriod.set(period, (byPeriod.get(period) ?? 0) + 1);
+  }
+
+  const periods = bucketRange(minTs, maxTs, granularity);
+  const totalCalendarPeriods = periods.length;
+
+  const rows: MemberPeriodProduction[] = [];
+  for (const [m, byPeriod] of perMemberPeriod) {
+    const perPeriod = periods.map((p) => byPeriod.get(p) ?? 0);
+    const total = perPeriod.reduce((sum, v) => sum + v, 0);
+    const activePeriods = perPeriod.filter((v) => v > 0).length;
+    rows.push({
+      name: cptMembers[m],
+      team: cptTeam[m],
+      perPeriod,
+      total,
+      activePeriods,
+      avgPerActivePeriod: activePeriods > 0 ? total / activePeriods : null,
+      avgPerCalendarPeriod: totalCalendarPeriods > 0 ? total / totalCalendarPeriods : null,
+    });
+  }
+
+  return { periods, rows };
+}
+
 /* ---------- maker-checker / QC ---------- */
 
 export interface CheckerStatsRow {
@@ -724,8 +799,25 @@ export function checkerStats(indices: number[]): CheckerStatsRow[] {
 }
 
 export interface TeamLeaderboardEntry {
-  name: string;
+  /** Every member tied at the winning value -- often just one, but ties (e.g.
+   * several members at 100% SLA) are common enough with a small sample that
+   * silently picking the first-in-array member would misattribute credit. */
+  names: string[];
   value: number;
+}
+
+/** Picks every item tied at the best value, instead of a single first-in-
+ * array winner -- the shared tie-break fix behind every leaderboard metric
+ * below and the executive scorecard's Best CPT SLA. */
+export function tiedTop<T>(items: T[], valueOf: (t: T) => number, nameOf: (t: T) => string, maximize: boolean): TeamLeaderboardEntry | null {
+  if (!items.length) return null;
+  let bestValue = valueOf(items[0]);
+  for (const it of items) {
+    const v = valueOf(it);
+    if (maximize ? v > bestValue : v < bestValue) bestValue = v;
+  }
+  const names = items.filter((it) => valueOf(it) === bestValue).map(nameOf);
+  return { names, value: bestValue };
 }
 
 export interface TeamLeaderboard {
@@ -758,20 +850,11 @@ export function teamLeaderboards(indices: number[]): Record<LocalTeam, TeamLeade
       return idx !== -1 && CHECKER_TEAM[idx] === team;
     }); // already sorted by volume descending
 
-    const topSla = rankable.length ? rankable.reduce((b, m) => (m.slaPct! > b.slaPct! ? m : b), rankable[0]) : null;
-    const fastestTat = withTat.length
-      ? withTat.reduce((b, m) => (m.avgActualMinutes! < b.avgActualMinutes! ? m : b), withTat[0])
-      : null;
-    const highestVolume = withVolume.length
-      ? withVolume.reduce((b, m) => (m.totalCompleted > b.totalCompleted ? m : b), withVolume[0])
-      : null;
-    const topApprover = teamApprovers[0] ?? null;
-
     return {
-      topSla: topSla ? { name: topSla.name, value: topSla.slaPct! } : null,
-      fastestTat: fastestTat ? { name: fastestTat.name, value: fastestTat.avgActualMinutes! } : null,
-      highestVolume: highestVolume ? { name: highestVolume.name, value: highestVolume.totalCompleted } : null,
-      topApprover: topApprover ? { name: topApprover.name, value: topApprover.volumeChecked } : null,
+      topSla: tiedTop(rankable, (m) => m.slaPct!, (m) => m.name, true),
+      fastestTat: tiedTop(withTat, (m) => m.avgActualMinutes!, (m) => m.name, false),
+      highestVolume: tiedTop(withVolume, (m) => m.totalCompleted, (m) => m.name, true),
+      topApprover: tiedTop(teamApprovers, (a) => a.volumeChecked, (a) => a.name, true),
     };
   }
 
@@ -787,7 +870,8 @@ export interface ScorecardData {
   maxTatRecordedMinutes: number | null;
   completedCases: number;
   completedCasesPct: number | null;
-  bestCptSla: { name: string; slaPct: number } | null;
+  /** Every member tied at the best SLA%, not just one -- see tiedTop. */
+  bestCptSla: { names: string[]; slaPct: number } | null;
 }
 
 /** Month picks (peak/lowest SLA, peak volume) are restricted to complete
@@ -812,7 +896,7 @@ export function computeScorecard(indices: number[]): ScorecardData {
 
   const kpis = computeKpis(indices);
   const members = cptMemberStats(indices).filter((m) => !m.lowSample && m.slaPct !== null);
-  const bestCpt = members.length ? members.reduce((b, m) => (m.slaPct! > b.slaPct! ? m : b), members[0]) : null;
+  const bestCpt = tiedTop(members, (m) => m.slaPct!, (m) => m.name, true);
 
   return {
     peakSlaMonth: peakSla ? { key: peakSla.key, slaPct: peakSla.slaPct! } : null,
@@ -821,7 +905,7 @@ export function computeScorecard(indices: number[]): ScorecardData {
     maxTatRecordedMinutes: maxTat,
     completedCases: kpis.completedCases,
     completedCasesPct: kpis.completionRate,
-    bestCptSla: bestCpt ? { name: bestCpt.name, slaPct: bestCpt.slaPct! } : null,
+    bestCptSla: bestCpt ? { names: bestCpt.names, slaPct: bestCpt.value } : null,
   };
 }
 
@@ -880,7 +964,7 @@ export function completionRateTrend(indices: number[], granularity: Granularity)
   const buckets = new Map<string, { total: number; completed: number }>();
 
   for (const i of indices) {
-    const key = bucketKey(cols.reqTs[i], granularity);
+    const key = bucketKey(cols.startTs[i], granularity);
     let b = buckets.get(key);
     if (!b) {
       b = { total: 0, completed: 0 };

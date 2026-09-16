@@ -58,12 +58,6 @@ export const INSIGHT_CONTENT: Record<string, InsightContent> = {
     suggestedAction:
       "Set an explicit internal target SLA% (e.g. 95%+ sustained) if recent performance shows it's realistically achievable, and treat any month below it as worth a root-cause look.",
   },
-  "card-breachdrivers": {
-    whyItMatters:
-      "A hold's entire purpose is stopping the SLA clock. If cases with a hold applied still breach at a meaningfully higher rate than cases without one, holds aren't fully protecting the cases that need them.",
-    suggestedAction:
-      "If the with-hold breach rate is notably higher, investigate whether holds are being logged late relative to when the case actually paused.",
-  },
   "card-breachoutliers": {
     whyItMatters:
       "A handful of extreme breaches can pull attention away from the more common, moderate ones -- seeing the worst cases individually is what a percentage alone can't show.",
@@ -105,12 +99,6 @@ export const INSIGHT_CONTENT: Record<string, InsightContent> = {
       "Volume and speed can trade off against each other -- a member processing the most cases isn't necessarily the fastest per case, and vice versa.",
     suggestedAction:
       "Look for members who are both high-volume and fast -- their approach may be worth documenting as a team-wide best practice.",
-  },
-  "card-checker": {
-    whyItMatters:
-      "Approval is a quality gate CPT already performs but has never analyzed. An approver whose approved cases breach SLA more than peers is worth a look -- but as the panel itself notes, category mix and the underlying initiator's work confound the raw number.",
-    suggestedAction:
-      "Cross-check a high-breach approver's category mix and the initiators they most often approve for before treating the number as a verdict on the approver's own judgment.",
   },
   "card-checkervolume": {
     whyItMatters:

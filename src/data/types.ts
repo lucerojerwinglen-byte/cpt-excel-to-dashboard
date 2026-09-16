@@ -43,7 +43,15 @@ export interface DashboardCols {
   checker: (number | null)[];
   site: number[];
   country: number[];
+  /** Index into `companies` -- source column COMPANY_NAME, the legal
+   * entity/vendor a case was raised under. Used to isolate Broadpath
+   * (a subcontractor) from Sagility's own entities. */
+  company: number[];
   reqTs: number[];
+  /** When a CPT member actually began working the case -- source column
+   * TaskStartDate. This, not reqTs, is what the app's global date-range
+   * filter and every trend chart bucket by (see selectors.ts). */
+  startTs: number[];
   tlApprovedTs: (number | null)[];
   assignedTs: number[];
   /** Unified closure event: Request Closed Date if Completed, Request
@@ -81,5 +89,7 @@ export interface DashboardData {
   checkers: string[];
   sites: string[];
   countries: string[];
+  /** COMPANY_NAME lookup, ordered by descending volume (see `company` col). */
+  companies: string[];
   cols: DashboardCols;
 }

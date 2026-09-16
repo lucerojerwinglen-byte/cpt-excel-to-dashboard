@@ -29,6 +29,7 @@ export const REQUIRED_COLUMNS = [
   "Request Cancelled Date",
   "Approved by cpt time",
   "Hold Date time",
+  "TaskStartDate",
   "TaskEndDate",
   "HoldStartDate",
   "HoldEndDate",
@@ -165,6 +166,7 @@ export async function transformWorkbook(file: File): Promise<TransformResult> {
   const countryClean = rows.map((r) => cleanStr(r["COUNTRY"]));
   const cptClean = rows.map((r) => cleanStr(r["Assigned to cpt name"]));
   const checkerClean = rows.map((r) => cleanStr(r["Approved by cpt name"]));
+  const companyClean = rows.map((r) => cleanStr(r["COMPANY_NAME"]));
 
   const departments = sortedByVolume(deptClean);
   const sites = sortedByVolume(siteClean);
@@ -173,6 +175,7 @@ export async function transformWorkbook(file: File): Promise<TransformResult> {
   const statuses = ["Completed", "Cancelled"];
   const cptMembers = [...new Set(cptClean)].sort();
   const checkers = sortedByVolume(checkerClean);
+  const companies = sortedByVolume(companyClean);
 
   const deptIndex = new Map(departments.map((v, i) => [v, i]));
   const siteIndex = new Map(sites.map((v, i) => [v, i]));
@@ -181,6 +184,7 @@ export async function transformWorkbook(file: File): Promise<TransformResult> {
   const statusIndex = new Map(statuses.map((v, i) => [v, i]));
   const cptIndex = new Map(cptMembers.map((v, i) => [v, i]));
   const checkerIndex = new Map(checkers.map((v, i) => [v, i]));
+  const companyIndex = new Map(companies.map((v, i) => [v, i]));
 
   // TAT benchmark is fixed per category -- first row's value wins, matching
   // groupby("Category")["TATInMinutes"].first().
@@ -220,10 +224,12 @@ export async function transformWorkbook(file: File): Promise<TransformResult> {
   const cptCol = cptClean.map((v) => cptIndex.get(v)!);
   const siteCol = siteClean.map((v) => siteIndex.get(v)!);
   const countryCol = countryClean.map((v) => countryIndex.get(v)!);
+  const companyCol = companyClean.map((v) => companyIndex.get(v)!);
   const checkerCol = rows.map((r, i) => (!isBlank(r["Approved by cpt name"]) ? checkerIndex.get(checkerClean[i])! : null));
   const caseNoCol = rows.map((r) => cleanStr(r["CaseNo"]));
 
   const reqTs = rows.map((r) => shiftedEpochMs(r["Request Raised Date"]));
+  const startTs = rows.map((r) => shiftedEpochMs(r["TaskStartDate"]));
   const tlApprovedTs = rows.map((r) => shiftedEpochMs(r["Approved Date By TL"]));
   const assignedTs = rows.map((r) => shiftedEpochMs(r["Request Assigned Date"]));
   const endTs = rows.map((r) => shiftedEpochMs(r["TaskEndDate"]));
@@ -256,8 +262,12 @@ export async function transformWorkbook(file: File): Promise<TransformResult> {
   const nowPh = new Date(Date.now() + PH_SHIFT_MS);
   const generatedAt = nowPh.toISOString().slice(0, 19);
 
-  const validReqTs = reqTs.filter((v): v is number => v !== null);
-  const partialMonths = computePartialMonths(validReqTs);
+  // Date coverage and partial-month detection are keyed off TaskStartDate,
+  // not Request Raised Date -- that's the field the global date-range filter
+  // and every trend chart bucket by (see selectors.ts), so "coverage" and
+  // "partial month" need to describe the same timeline those charts show.
+  const validStartTs = startTs.filter((v): v is number => v !== null);
+  const partialMonths = computePartialMonths(validStartTs);
 
   const completedCount = statusCol.filter((s) => s === statusIndex.get("Completed")).length;
   const cancelledCount = statusCol.filter((s) => s === statusIndex.get("Cancelled")).length;
@@ -267,8 +277,8 @@ export async function transformWorkbook(file: File): Promise<TransformResult> {
     generatedAt,
     totalRows: n,
     dateRange: {
-      min: validReqTs.length ? Math.min(...validReqTs) : 0,
-      max: validReqTs.length ? Math.max(...validReqTs) : 0,
+      min: validStartTs.length ? Math.min(...validStartTs) : 0,
+      max: validStartTs.length ? Math.max(...validStartTs) : 0,
     },
     partialMonths,
     statusCounts: { Completed: completedCount, Cancelled: cancelledCount },
@@ -311,6 +321,7 @@ export async function transformWorkbook(file: File): Promise<TransformResult> {
     checkers,
     sites,
     countries,
+    companies,
     cols: {
       caseNo: caseNoCol,
       cat: catCol as number[],
@@ -320,7 +331,9 @@ export async function transformWorkbook(file: File): Promise<TransformResult> {
       checker: checkerCol,
       site: siteCol,
       country: countryCol,
+      company: companyCol,
       reqTs: reqTs as number[],
+      startTs: startTs as number[],
       tlApprovedTs,
       assignedTs: assignedTs as number[],
       endTs: endTs as number[],

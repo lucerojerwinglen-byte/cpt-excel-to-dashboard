@@ -16,6 +16,10 @@ dist-ssr
 .claude/
 .agents/
 
+# Real Sagiease/Workday exports used for local testing -- never committed
+*.xlsx
+*.xls
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

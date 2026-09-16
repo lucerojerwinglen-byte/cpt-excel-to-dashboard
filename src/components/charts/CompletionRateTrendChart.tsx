@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { CheckCircle2 } from "lucide-react";
 import { ChartCard } from "../ui/ChartCard";
 import { SegmentedToggle } from "../ui/SegmentedToggle";
 import { useCompletionRateTrend } from "../../data/useDashboardSelectors";
-import { fmtPct } from "../../lib/format";
+import { fmtNum, fmtPct } from "../../lib/format";
 import { formatBucketLabel, type Granularity } from "../../lib/bucket";
 import { TooltipCard } from "./TooltipCard";
 import type { CompletionRateTrendPoint } from "../../data/selectors";
@@ -29,7 +29,7 @@ export function CompletionRateTrendChart() {
     <ChartCard
       id="card-complrate"
       title="Completion Rate Trend"
-      subtitle="Completed ÷ Total (Completed + Cancelled)"
+      subtitle="Completed ÷ Total Cases (Completed + Cancelled) -- bars show Total Cases per period"
       icon={CheckCircle2}
       headerExtra={
         <SegmentedToggle
@@ -50,7 +50,7 @@ export function CompletionRateTrendChart() {
     >
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={trend} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+          <ComposedChart data={trend} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
             <CartesianGrid stroke="#00493a14" vertical={false} />
             <XAxis
               dataKey="key"
@@ -61,6 +61,16 @@ export function CompletionRateTrendChart() {
               minTickGap={24}
             />
             <YAxis
+              yAxisId="cases"
+              tick={{ fontSize: 12, fill: "#00493a" }}
+              axisLine={false}
+              tickLine={false}
+              width={44}
+              allowDecimals={false}
+            />
+            <YAxis
+              yAxisId="rate"
+              orientation="right"
               domain={[0, 100]}
               tickFormatter={(v: number) => `${v}%`}
               tick={{ fontSize: 12, fill: "#00493a" }}
@@ -71,18 +81,23 @@ export function CompletionRateTrendChart() {
             <Tooltip
               content={({ active, payload, label }) => {
                 if (!active || !payload?.length) return null;
-                const value = payload[0].value as number | null;
+                const d = payload[0].payload as CompletionRateTrendPoint;
                 return (
                   <TooltipCard>
                     <p className="font-medium text-brand-green-900">{formatBucketLabel(label as string)}</p>
-                    <p className="text-brand-green-900/70">{fmtPct(value)}</p>
+                    <p className="text-brand-green-900/70">Total Cases: {fmtNum(d.total)}</p>
+                    <p className="text-brand-green-900/70">Completion Rate: {fmtPct(d.completionRate)}</p>
                   </TooltipCard>
                 );
               }}
             />
+            <Legend wrapperStyle={{ fontSize: 12 }} />
+            <Bar yAxisId="cases" dataKey="total" name="Total Cases" fill="#55aaff" radius={[6, 6, 0, 0]} animationDuration={500} />
             <Line
+              yAxisId="rate"
               type="monotone"
               dataKey="completionRate"
+              name="Completion Rate %"
               stroke="#0050ff"
               strokeWidth={2.5}
               dot={false}
@@ -91,7 +106,7 @@ export function CompletionRateTrendChart() {
               animationDuration={500}
               animationEasing="ease-out"
             />
-          </LineChart>
+          </ComposedChart>
         </ResponsiveContainer>
       </div>
     </ChartCard>

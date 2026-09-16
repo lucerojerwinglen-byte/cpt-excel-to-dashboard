@@ -49,7 +49,7 @@ function cellsFor(s: ScorecardData): ScorecardCell[] {
     {
       value: s.bestCptSla ? fmtPct(s.bestCptSla.slaPct) : "—",
       label: "Best CPT SLA",
-      sub: s.bestCptSla?.name,
+      sub: s.bestCptSla?.names.join(", "),
       color: "#1e2867",
     },
   ];

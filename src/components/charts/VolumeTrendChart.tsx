@@ -34,7 +34,7 @@ export function VolumeTrendChart() {
     <ChartCard
       id="card-volume"
       title="Case Volume Trend"
-      subtitle="Completed vs. Cancelled, by Request Raised date"
+      subtitle="Completed vs. Cancelled, by Task Start date"
       icon={TrendingUp}
       headerExtra={
         <SegmentedToggle

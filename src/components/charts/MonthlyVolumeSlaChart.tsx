@@ -44,7 +44,7 @@ export function MonthlyVolumeSlaChart() {
     <ChartCard
       id="card-volsla"
       title="Monthly Volume & SLA Achievement Trend"
-      subtitle={`Total case volume vs. SLA Achievement Rate (Completed cases), by Request Raised date · target ${SLA_TARGET_PCT}%`}
+      subtitle={`Total case volume vs. SLA Achievement Rate (Completed cases), by Task Start date · target ${SLA_TARGET_PCT}%`}
       icon={TrendingUp}
       headerExtra={
         <SegmentedToggle

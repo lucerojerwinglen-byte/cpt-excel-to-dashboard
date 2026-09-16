@@ -23,7 +23,7 @@ export function MiniStatCard({ icon: Icon, label, value, sub, color }: MiniStatC
         <span className="truncate text-[10.5px] font-medium uppercase tracking-wide text-brand-green-700">{label}</span>
       </div>
       <p className="mt-2.5 text-2xl font-semibold tabular-nums text-brand-green-900">{value}</p>
-      <p className="mt-0.5 truncate text-[11px] text-brand-green-700/80">{sub ?? "—"}</p>
+      <p className="mt-0.5 text-[11px] text-brand-green-700/80">{sub ?? "—"}</p>
     </div>
   );
 }

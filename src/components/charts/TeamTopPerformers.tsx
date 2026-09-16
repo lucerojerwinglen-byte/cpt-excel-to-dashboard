@@ -18,34 +18,42 @@ interface Metric {
 }
 
 const METRICS: Metric[] = [
-  { icon: Trophy, label: "Top SLA Achiever", color: TONE_COLOR.good, value: (lb) => (lb.topSla ? fmtPct(lb.topSla.value) : "—"), sub: (lb) => lb.topSla?.name },
+  {
+    icon: Trophy,
+    label: "Top SLA Achiever",
+    color: TONE_COLOR.good,
+    value: (lb) => (lb.topSla ? fmtPct(lb.topSla.value) : "—"),
+    sub: (lb) => lb.topSla?.names.join(", "),
+  },
   {
     icon: Zap,
     label: "Fastest Avg TAT",
     color: TONE_COLOR.info,
     value: (lb) => (lb.fastestTat ? `${fmtNum(lb.fastestTat.value)} min` : "—"),
-    sub: (lb) => lb.fastestTat?.name,
+    sub: (lb) => lb.fastestTat?.names.join(", "),
   },
   {
     icon: TrendingUp,
     label: "Highest Volume",
     color: "#eda100",
     value: (lb) => (lb.highestVolume ? fmtNum(lb.highestVolume.value) : "—"),
-    sub: (lb) => lb.highestVolume?.name,
+    sub: (lb) => lb.highestVolume?.names.join(", "),
   },
   {
     icon: CheckCheck,
     label: "Top Approver",
     color: "#531367",
     value: (lb) => (lb.topApprover ? fmtNum(lb.topApprover.value) : "—"),
-    sub: (lb) => lb.topApprover?.name,
+    sub: (lb) => lb.topApprover?.names.join(", "),
   },
 ];
 
 function buildInsight(leaders: Record<LocalTeam, TeamLeaderboard>): string {
   const parts = TEAMS.map((team) => {
     const top = leaders[team].topSla;
-    return top ? `${top.name} leads ${team} on SLA (${fmtPct(top.value)})` : null;
+    if (!top) return null;
+    const who = top.names.length > 1 ? `${top.names.join(", ")} tie` : `${top.names[0]} leads`;
+    return `${who} ${team} on SLA (${fmtPct(top.value)})`;
   }).filter((p): p is string => p !== null);
   if (!parts.length) return "Not enough completed volume in the current view to rank team leaders.";
   return `${parts.join("; ")}. Each metric is ranked within its own team -- a small team's outlier can't win a title in the other team's row.`;
@@ -62,7 +70,7 @@ export function TeamTopPerformers() {
   return (
     <ChartCard
       id="card-teamtop"
-      title="Top Performers by Team"
+      title="CPT PERFORMER DASHBOARD"
       subtitle="Philippines and India ranked separately, so one team's leader can't overshadow the other's"
       icon={Award}
       insight={buildInsight(leaders)}

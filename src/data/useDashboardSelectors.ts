@@ -1,10 +1,11 @@
 import { useMemo } from "react";
 import { useFilters } from "../state/FilterContext";
+import { useIsBroadpathScoped } from "../state/BroadpathScopeContext";
 import type { Granularity } from "../lib/bucket";
 import type { LocalTeam, TimeBasis } from "./selectors";
 import {
-  breachDrivers,
   breachOutliers,
+  broadpathIndices,
   cancellationByDepartment,
   categoryBreakdown,
   categoryPerformance,
@@ -23,7 +24,9 @@ import {
   getFilteredIndices,
   getFilteredIndicesAnyTeam,
   getFilteredIndicesForTeam,
+  memberPeriodProduction,
   processingDurationStats,
+  productionTotalsByMember,
   requestTimeHeatmap,
   siteBreakdown,
   slaMix,
@@ -34,10 +37,18 @@ import {
   volumeAndSlaTrend,
 } from "./selectors";
 
-/** Row indices matching the active filters. Every chart/KPI derives from this. */
+/** Row indices matching the active filters. Every chart/KPI derives from
+ * this (directly, or via useFilteredIndicesForTeam/useFilteredIndicesAnyTeam
+ * below) -- restricting to Broadpath here, when BroadpathScopeProvider is
+ * active, is what lets the Broadpath tab reuse every other chart component
+ * unmodified. */
 export function useFilteredIndices(): number[] {
   const { filters } = useFilters();
-  return useMemo(() => getFilteredIndices(filters), [filters]);
+  const broadpathOnly = useIsBroadpathScoped();
+  return useMemo(() => {
+    const indices = getFilteredIndices(filters);
+    return broadpathOnly ? broadpathIndices(indices) : indices;
+  }, [filters, broadpathOnly]);
 }
 
 export function useKpis() {
@@ -105,11 +116,6 @@ export function useSlaTrend(granularity: Granularity) {
   return useMemo(() => slaTrend(indices, granularity), [indices, granularity]);
 }
 
-export function useBreachDrivers() {
-  const indices = useFilteredIndices();
-  return useMemo(() => breachDrivers(indices), [indices]);
-}
-
 export function useBreachOutliers(topN = Infinity) {
   const indices = useFilteredIndices();
   return useMemo(() => breachOutliers(indices, topN), [indices, topN]);
@@ -122,6 +128,14 @@ export function useProcessingDurationStats() {
 
 export function useCptMemberStats() {
   const indices = useFilteredIndices();
+  return useMemo(() => cptMemberStats(indices), [indices]);
+}
+
+/** Same contract as useCptMemberStats, but scoped to one explicit team
+ * regardless of the sidebar's global Team filter -- used by the Top
+ * Performer tab, which always shows both PH and IND side by side. */
+export function useCptMemberStatsForTeam(team: LocalTeam) {
+  const indices = useFilteredIndicesForTeam(team);
   return useMemo(() => cptMemberStats(indices), [indices]);
 }
 
@@ -171,14 +185,32 @@ export function useCompletionTimeHeatmap(indices: number[], basis: TimeBasis = "
  * still respecting every other active sidebar filter. */
 export function useFilteredIndicesForTeam(team: LocalTeam): number[] {
   const { filters } = useFilters();
-  return useMemo(() => getFilteredIndicesForTeam(filters, team), [filters, team]);
+  const broadpathOnly = useIsBroadpathScoped();
+  return useMemo(() => {
+    const indices = getFilteredIndicesForTeam(filters, team);
+    return broadpathOnly ? broadpathIndices(indices) : indices;
+  }, [filters, team, broadpathOnly]);
 }
 
 /** Same contract as useFilteredIndicesForTeam, for a local toggle's "Both"
  * state -- every team, still ignoring the sidebar's global Team filter. */
 export function useFilteredIndicesAnyTeam(): number[] {
   const { filters } = useFilters();
-  return useMemo(() => getFilteredIndicesAnyTeam(filters), [filters]);
+  const broadpathOnly = useIsBroadpathScoped();
+  return useMemo(() => {
+    const indices = getFilteredIndicesAnyTeam(filters);
+    return broadpathOnly ? broadpathIndices(indices) : indices;
+  }, [filters, broadpathOnly]);
+}
+
+export function useProductionTotalsByMember() {
+  const indices = useFilteredIndices();
+  return useMemo(() => productionTotalsByMember(indices), [indices]);
+}
+
+export function useMemberPeriodProduction(granularity: Granularity) {
+  const indices = useFilteredIndices();
+  return useMemo(() => memberPeriodProduction(indices, granularity), [indices, granularity]);
 }
 
 /** Single hook for a chart-local Both/Philippines/India toggle, so the

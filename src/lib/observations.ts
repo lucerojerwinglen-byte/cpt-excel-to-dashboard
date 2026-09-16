@@ -8,20 +8,17 @@ import {
   Gauge,
   Globe2,
   MapPin,
-  PauseCircle,
   Scale,
   ShieldAlert,
   ShieldCheck,
   Sprout,
   Target,
   TrendingUp,
-  UserCheck,
   Users,
   Zap,
 } from "lucide-react";
 import type { Tone } from "./palette";
 import {
-  breachDrivers,
   breachOutliers,
   cancellationByDepartment,
   categoryBreakdown,
@@ -32,7 +29,6 @@ import {
   cptMemberStats,
   cptWorkload,
   departmentBreakdown,
-  holdImpact,
   siteBreakdown,
   volumeAndSlaTrend,
 } from "../data/selectors";
@@ -233,23 +229,6 @@ function categoryVariance(indices: number[]): Observation | null {
   };
 }
 
-function checkerSignal(indices: number[]): Observation | null {
-  const rows = checkerStats(indices).filter((r) => r.volumeChecked >= 100 && r.breachRatePct !== null);
-  if (rows.length < 3) return null;
-  const avg = rows.reduce((s, r) => s + r.breachRatePct!, 0) / rows.length;
-  const worst = rows.reduce((b, r) => (r.breachRatePct! > b.breachRatePct! ? r : b), rows[0]);
-  if (worst.breachRatePct! < avg * 1.4 || worst.breachRatePct! < 1) return null;
-  return {
-    icon: UserCheck,
-    tone: "warning",
-    title: `${worst.name} — Elevated Breach Rate Under Approval`,
-    body: `${fmtPct(worst.breachRatePct)} of cases approved by ${worst.name} breached SLA, vs. ${fmtPct(
-      avg,
-    )} average across active approvers. Correlational, not causal -- category mix and the underlying initiator's work may explain part of the gap.`,
-    cardId: "card-checker",
-  };
-}
-
 function mostActiveChecker(indices: number[]): Observation | null {
   const rows = checkerStats(indices); // already sorted by volume descending
   if (rows.length < 2) return null;
@@ -269,13 +248,16 @@ function mostActiveChecker(indices: number[]): Observation | null {
 function bestCptSla(indices: number[]): Observation | null {
   const members = cptMemberStats(indices).filter((m) => !m.lowSample && m.slaPct !== null);
   if (!members.length) return null;
-  const best = members.reduce((b, m) => (m.slaPct! > b.slaPct! ? m : b), members[0]);
+  const bestPct = members.reduce((b, m) => Math.max(b, m.slaPct!), -Infinity);
+  const winners = members.filter((m) => m.slaPct === bestPct);
+  const names = winners.map((w) => w.name).join(", ");
+  const totalCompleted = winners.reduce((s, w) => s + w.totalCompleted, 0);
   return {
     icon: Award,
     tone: "good",
-    title: `${best.name} — Top SLA Achiever`,
-    body: `${fmtPct(best.slaPct)} SLA Achievement across ${fmtNum(
-      best.totalCompleted,
+    title: `${names} — Top SLA Achiever${winners.length > 1 ? "s" : ""}`,
+    body: `${fmtPct(bestPct)} SLA Achievement across ${fmtNum(
+      totalCompleted,
     )} completed cases -- the best among members with ${MIN_COMPLETED_FOR_RANKING}+ completed cases.`,
     cardId: "card-cptsla",
   };
@@ -293,27 +275,6 @@ function fastestProcessor(indices: number[]): Observation | null {
       fastest.totalCompleted,
     )} completed cases -- the fastest among members with ${MIN_COMPLETED_FOR_RANKING}+ completed cases.`,
     cardId: "card-cptvoltat",
-  };
-}
-
-function holdEffectiveness(indices: number[]): Observation | null {
-  const drivers = breachDrivers(indices);
-  const impact = holdImpact(indices);
-  if (!impact.casesWithHold) return null;
-  const withRate = drivers.withHold.breachRate ?? 0;
-  const withoutRate = drivers.withoutHold.breachRate ?? 0;
-  const diff = withRate - withoutRate;
-  const protective = diff <= 1;
-  return {
-    icon: PauseCircle,
-    tone: protective ? "good" : "warning",
-    title: protective ? "Holds Are Doing Their Job" : "Holds Aren't Fully Protecting Cases",
-    body: `${fmtNum(impact.casesWithHold)} completed cases used a hold; ${fmtNum(
-      impact.casesSavedByHold,
-    )} stayed within SLA only because hold time was excluded from the clock. With-hold breach rate ${fmtPct(
-      withRate,
-    )} vs. ${fmtPct(withoutRate)} without one.`,
-    cardId: "card-breachdrivers",
   };
 }
 
@@ -501,7 +462,6 @@ export function volumeObservations(indices: number[]): Observation[] {
 export function slaObservations(indices: number[]): Observation[] {
   return assemble(
     worstMonth(indices, "card-slatrend"),
-    holdEffectiveness(indices),
     worstBreachCluster(indices),
     nearBenchmarkRisk(indices),
     categoryVariance(indices),
@@ -523,7 +483,6 @@ export function cptObservations(indices: number[]): Observation[] {
     bestCptSla(indices),
     memberIntervention(indices),
     fastestProcessor(indices),
-    checkerSignal(indices),
     mostActiveChecker(indices),
     workloadConcentration(indices),
     teamComparisonNote(indices),

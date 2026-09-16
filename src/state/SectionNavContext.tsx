@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { BarChart3, CalendarClock, Gauge, Grid2x2, LayoutDashboard, Users, Users2, type LucideIcon } from "lucide-react";
+import { Activity, BarChart3, Building2, CalendarClock, Gauge, Grid2x2, LayoutDashboard, Trophy, Users, Users2, type LucideIcon } from "lucide-react";
 
 export interface SectionMeta {
   id: string;
@@ -11,16 +11,22 @@ export interface SectionMeta {
  * dashboard's narrative order: how much work came in (Volume & Demand), how
  * well it was handled (SLA Performance), broken down by case type (Category
  * Performance) and by who did it (CPT Member Insights, Workforce &
- * Capacity), before ending on Timing Patterns -- a specialized operational
- * deep-dive (heatmaps, shift timing) rather than a headline metric, so it
- * comes last instead of interrupting the performance narrative. */
+ * Capacity, Production & Utilization), before ending on Timing Patterns -- a
+ * specialized operational deep-dive (heatmaps, shift timing) rather than a
+ * headline metric, so it comes last instead of interrupting the performance
+ * narrative. Broadpath sits right after Executive Overview since it's a
+ * scoped-down mirror of that same KPI snapshot, just for the Broadpath
+ * subcontractor entity rather than the whole dataset. */
 export const SECTIONS_META: SectionMeta[] = [
   { id: "section-executive-overview", label: "Executive Overview", icon: LayoutDashboard },
+  { id: "section-broadpath", label: "Broadpath", icon: Building2 },
   { id: "section-volume-demand", label: "Volume & Demand", icon: BarChart3 },
   { id: "section-sla-performance", label: "SLA Performance", icon: Gauge },
   { id: "section-category-performance", label: "Category Performance", icon: Grid2x2 },
   { id: "section-cpt-member-insights", label: "CPT Member Insights", icon: Users },
   { id: "section-workforce-capacity", label: "Workforce & Capacity", icon: Users2 },
+  { id: "section-production-utilization", label: "Production & Utilization", icon: Activity },
+  { id: "section-top-performer", label: "Top Performer", icon: Trophy },
   { id: "section-timing-patterns", label: "Timing Patterns", icon: CalendarClock },
 ];
 
@@ -46,7 +52,6 @@ const SECTION_OF_CARD: Record<string, string> = {
   "card-compheat": "section-timing-patterns",
 
   "card-slatrend": "section-sla-performance",
-  "card-breachdrivers": "section-sla-performance",
   "card-breachoutliers": "section-sla-performance",
 
   "card-catmatrix": "section-category-performance",
@@ -55,13 +60,20 @@ const SECTION_OF_CARD: Record<string, string> = {
 
   "card-cptsla": "section-cpt-member-insights",
   "card-cptvoltat": "section-cpt-member-insights",
-  "card-checker": "section-cpt-member-insights",
   "card-checkervolume": "section-cpt-member-insights",
   "card-teamtop": "section-cpt-member-insights",
   "card-cptprofiles": "section-cpt-member-insights",
 
   "card-workload": "section-workforce-capacity",
   "card-cptdow": "section-workforce-capacity",
+
+  "card-broadpath": "section-broadpath",
+
+  "card-production": "section-production-utilization",
+  "card-totaltimeproduction": "section-production-utilization",
+  "card-avgticketspermonth": "section-production-utilization",
+  "card-productiondetail": "section-production-utilization",
+  "card-tatsummary": "section-production-utilization",
 };
 
 interface ScrollTarget {
