@@ -47,6 +47,28 @@ Rules for the chain:
 
 ---
 
+## One-sitting mode
+
+For a feature that is one coherent unit, the unit of work may be "one feature" instead of
+"one small ticket", via `/one-sitting`. It is a size choice, not a shortcut: every rule
+below still applies, and the feature is still exactly one ticket on the tracker.
+
+- **Plan checkpoint first.** Restate the feature, list files, write one automated check per
+  acceptance criterion, state what is out of scope, then wait for approval.
+- **Size check.** Stop and slice into tickets (or write an ADR first) if the work changes
+  the schema or adds a migration, touches auth/login/roster/shared code, spans more than
+  ~8 files or a diff too long to read carefully, or hinges on an undecided design question.
+- **Git inside the sitting.** Local commits on the ticket branch, one per step, each after
+  its check was seen failing and then passing; then a plain push of that branch and
+  opening the PR, per the allowed list under Version control. Merging stays with the
+  human, and deploying is never covered.
+- **Same ending as any ticket:** `/code-review`, plain-English diff explanation, named
+  trade-offs, then stop.
+
+If the diff stops being readable in one pass, that is the signal to go back to tickets.
+
+---
+
 ## Standing rules
 
 ### Scope
@@ -57,6 +79,25 @@ Rules for the chain:
   touch. Record it as a suggestion instead.
 - Do not add a dependency without asking. Name what it costs and what the
   no-dependency version would look like.
+
+### Smallest change that fully works
+
+Be lazy about the solution, never about the ticket. Before writing code, take the
+first rung of this ladder that works completely:
+
+1. Does it need to exist? If the need is already met, say so and stop.
+2. Does this repo already have a helper or pattern? Reuse it.
+3. Does the language, standard library or platform already do it?
+4. Does an already-installed dependency do it? (A new one still needs asking.)
+5. Can it be one readable line?
+6. Otherwise, write the minimum code, with no options or abstractions "for later".
+
+Never cut: validation at trust boundaries, error handling that prevents data loss,
+security, accessibility, or anything the ticket explicitly asks for. For a bug, grep
+every caller first and fix the root cause once. When you knowingly cut a corner, leave
+`shortcut: <limit>, <when to upgrade>` in the code. End each ticket explanation with one
+or two lines on what was skipped or left unchecked. (Adapted from Ponytail,
+github.com/DietrichGebert/ponytail, MIT.)
 
 ### Tests
 
@@ -121,8 +162,21 @@ diff-reading surface — do not bypass it to save a step.
 
 Operational rules:
 
-- Propose commit messages and branch names; do not run `git commit`, `git push`,
-  or `git merge` unless explicitly asked. The human runs those.
+- **Allowed without asking, on the ticket branch only:** `git status`, `diff`, `log`,
+  `switch -c ticket-<n>-<slug>`, `add` (never staging data files or secrets, see above),
+  `commit`, `git push -u origin ticket-<n>-<slug>` (plain push, no force), and opening a
+  pull request for that branch with `Closes #<n>`. Show the commit message and PR text
+  in chat as you go.
+- **Ask first, every time:** `git merge` or merging a PR, `git pull`/`rebase` onto the
+  ticket branch when it would rewrite commits, `git stash`, `git reset`, `git checkout --`
+  or anything that discards uncommitted work, deleting any branch (local or remote), and
+  creating tags or releases.
+- **Never, unless told directly and given a reason:** `git push --force` (or
+  `--force-with-lease`), pushing to `main`, rewriting published history, `git commit
+  --amend` on a pushed commit, `--no-verify`, and any deploy.
+- **Deploys are always the human's decision.** Not covered by any permission above, by
+  `/one-sitting`, or by a green PR. This includes `wrangler deploy`, migrations against
+  the production or demo D1 databases, and anything in `docs/agents/deploy.md`.
 - Expect a clean tree before each ticket. If it is dirty when one begins, flag it
   and stop.
 - Never rewrite published history — no `push --force`, no rebase of anything
